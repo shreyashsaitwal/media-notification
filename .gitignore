@@ -1,0 +1,11 @@
+# Development dependencies' directory
+.rush/dev-deps
+
+# Output directory
+out
+
+# IntelliJ files
+*.iml
+
+*.apk
+*.aia

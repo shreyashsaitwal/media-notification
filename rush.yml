@@ -1,0 +1,22 @@
+name: MediaNotification
+description: Show media style notifactions
+
+# For a detailed info on this file and supported fields, check
+# out this link: https://github.com/ShreyashSaitwal/rush-cli/wiki/Metadata-File
+
+version:
+  number: auto        # Auto increments version number when built with '-r' (or '--release') flag.
+  name: 1.0-BETA
+
+assets:
+  icon: icon.png
+
+authors:
+  - Shreyash
+
+release:
+  optimize: true
+
+deps:
+  - media-1.3.0.jar
+

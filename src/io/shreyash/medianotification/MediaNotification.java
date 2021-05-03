@@ -8,6 +8,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.Bundle;
@@ -30,8 +31,11 @@ import com.google.appinventor.components.runtime.Form;
 import com.google.appinventor.components.runtime.errors.YailRuntimeError;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public class MediaNotification extends AndroidNonvisibleComponent {
   private final Context context;
@@ -69,9 +73,9 @@ public class MediaNotification extends AndroidNonvisibleComponent {
 
         if (intent.getAction().equals(ActionType.PLAY)) {
           final NotificationInfo info = notificationInfo.get(id);
-          final boolean isPlaying = info.isPlaying();
+          final boolean isPlaying = info.getIsPlaying();
 
-          ShowNotification(id, info.getPriority(), info.getMetadata());
+          ShowNotification(id, info.getPriority(), true, info.getMetadata());
           ActionButtonClicked(isPlaying ? ActionType.PAUSE : ActionType.PLAY, id);
 
           info.setIsPlaying(!isPlaying);
@@ -104,7 +108,7 @@ public class MediaNotification extends AndroidNonvisibleComponent {
 
     final int icon;
     if (ActionType.PLAY.equals(actionType)) {
-      if (notificationInfo.get(notificationId).isPlaying()) {
+      if (notificationInfo.get(notificationId).getIsPlaying()) {
         icon = android.R.drawable.ic_media_pause;
       } else {
         icon = android.R.drawable.ic_media_play;
@@ -118,16 +122,16 @@ public class MediaNotification extends AndroidNonvisibleComponent {
     return new NotificationCompat.Action.Builder(icon, actionType, pendingIntent).build();
   }
 
-  @SimpleFunction()
-  public void ShowNotification(int id, int priority, Object metadata) {
+  @SimpleFunction(description = "Shows a media style notification.")
+  public void ShowNotification(int id, int priority, boolean onlyAlertOnce, Object metadata) {
     mediaSession.setMetadata((MediaMetadataCompat) metadata);
     MediaMetadataCompat metadataCompat = mediaSession.getController().getMetadata();
 
     if (notificationInfo.containsKey(id)) {
       final NotificationInfo info = notificationInfo.get(id);
-      info.setIsPlaying(!info.isPlaying());
+      info.setIsPlaying(!info.getIsPlaying());
     } else {
-      notificationInfo.put(id, new NotificationInfo(priority, true, metadataCompat));
+      notificationInfo.put(id, new NotificationInfo(priority, onlyAlertOnce, true, metadataCompat));
     }
 
     final NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId)
@@ -139,29 +143,58 @@ public class MediaNotification extends AndroidNonvisibleComponent {
         .setSmallIcon(activity.getApplicationInfo().icon)
         .setContentTitle(metadataCompat.getString(MediaMetadataCompat.METADATA_KEY_TITLE))
         .setContentText(metadataCompat.getString(MediaMetadataCompat.METADATA_KEY_ARTIST))
-        .setLargeIcon(metadataCompat.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART))
         .addAction(buildAction(id, ActionType.PREV))
         .addAction(buildAction(id, ActionType.PLAY))
-        .addAction(buildAction(id, ActionType.NEXT));
+        .addAction(buildAction(id, ActionType.NEXT))
+        .setOnlyAlertOnce(onlyAlertOnce);
 
-    notificationManager.notify(id, builder.build());
+    if (!metadataCompat.getString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI).equals("")) {
+      new Thread(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            final URL url = new URL(metadataCompat.getString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI));
+            final Bitmap bitmap = BitmapFactory.decodeStream(url.openStream());
+
+            builder.setLargeIcon(bitmap);
+            notificationManager.notify(id, builder.build());
+          } catch (MalformedURLException e) {
+            e.printStackTrace();
+            throw new YailRuntimeError(e.toString(), "MalformedURLException");
+          } catch (IOException e) {
+            e.printStackTrace();
+            throw new YailRuntimeError(e.toString(), "IOException");
+          }
+        }
+      }).start();
+    } else {
+      builder.setLargeIcon(metadataCompat.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART));
+      notificationManager.notify(id, builder.build());
+    }
   }
 
   @SimpleFunction
   public Object CreateMetadata(String title, String artist, String albumArt) {
-    final MediaMetadataCompat metadata;
-    try {
-      metadata = new MediaMetadataCompat.Builder()
-          .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
-          .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist)
-          .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, BitmapFactory.decodeStream(form.openAsset(albumArt)))
-          .build();
-    } catch (IOException e) {
-      e.printStackTrace();
-      throw new YailRuntimeError("Failed to open asset '" + albumArt + "'.\n" + e.getMessage(), "IOException");
+    final Pattern urlPattern = Pattern.compile("https?://(www\\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()!@:%_+.~#?&//=]*)");
+    final MediaMetadataCompat.Builder metadata;
+    metadata = new MediaMetadataCompat.Builder()
+        .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
+        .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist);
+
+    if (urlPattern.matcher(albumArt).find()) {
+      metadata.putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, albumArt);
+    } else {
+      try {
+        metadata
+            .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, BitmapFactory.decodeStream(form.openAsset(albumArt)))
+            .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, "");
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new YailRuntimeError("Something went wrong while loading albumArt.\n" + e.toString(), "IOException");
+      }
     }
 
-    return metadata;
+    return metadata.build();
   }
 
   @SimpleFunction

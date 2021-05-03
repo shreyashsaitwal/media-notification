@@ -57,13 +57,18 @@ public class MediaNotification extends AndroidNonvisibleComponent {
     this.activity = form.$context();
     this.context = activity.getApplicationContext();
 
-    createChannel();
     this.mediaSession = new MediaSessionCompat(context, "MediaNotificationExtSession");
     this.notificationManager = NotificationManagerCompat.from(context);
 
     registerActionReceiver(activity);
   }
 
+  /**
+   * Registers the broadcast receivers responsible for handling the media
+   * notification action's click events.
+   *
+   * @param activity the current activity
+   */
   private void registerActionReceiver(Activity activity) {
     final BroadcastReceiver mediaActionReceiver = new BroadcastReceiver() {
       @Override
@@ -75,30 +80,45 @@ public class MediaNotification extends AndroidNonvisibleComponent {
           final NotificationInfo info = notificationInfo.get(id);
           final boolean isPlaying = info.getIsPlaying();
 
-          ShowNotification(id, info.getPriority(), true, info.getMetadata());
           ActionButtonClicked(isPlaying ? ActionType.PAUSE : ActionType.PLAY, id);
-
           info.setIsPlaying(!isPlaying);
+
+          // Showing the notification again with the same ID updates it rather
+          // than creating a new notification. Here, we are updating the extension
+          // to change middle action's icon (play/pause).
+          ShowNotification(id, info.getPriority(), info.getMetadata());
         } else {
           ActionButtonClicked(intent.getAction(), id);
         }
       }
     };
 
+    // Register the receiver
     activity.registerReceiver(mediaActionReceiver, new IntentFilter(ActionType.PLAY));
     activity.registerReceiver(mediaActionReceiver, new IntentFilter(ActionType.NEXT));
     activity.registerReceiver(mediaActionReceiver, new IntentFilter(ActionType.PREV));
   }
 
+  /**
+   * Creates a notification channel on API 26 and above.
+   */
   private void createChannel() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+    final NotificationManager manager = activity.getSystemService(NotificationManager.class);
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && manager.getNotificationChannel(channelId) == null) {
       final NotificationChannel channel = new NotificationChannel(channelId, channelName, channelImp);
-      final NotificationManager manager = activity.getSystemService(NotificationManager.class);
       manager.createNotificationChannel(channel);
     }
   }
 
+  /**
+   * Builds an action button for the notification.
+   *
+   * @param notificationId ID of the notification for which action is to be created.
+   * @param actionType     The type of this action; see {@link ActionType}
+   */
   private NotificationCompat.Action buildAction(int notificationId, String actionType) {
+    createChannel();
+
     final Intent intent = new Intent(actionType);
     intent.putExtra("id", notificationId);
 
@@ -122,16 +142,23 @@ public class MediaNotification extends AndroidNonvisibleComponent {
     return new NotificationCompat.Action.Builder(icon, actionType, pendingIntent).build();
   }
 
+  /**
+   * Shows a media style notification.
+   *
+   * @param id       The ID of this notification. It is used to identify the notification.
+   * @param priority The priority of this notification.
+   * @param metadata Metadata of the media being played.
+   */
   @SimpleFunction(description = "Shows a media style notification.")
-  public void ShowNotification(int id, int priority, boolean onlyAlertOnce, Object metadata) {
+  public void ShowNotification(int id, int priority, Object metadata) {
     mediaSession.setMetadata((MediaMetadataCompat) metadata);
     MediaMetadataCompat metadataCompat = mediaSession.getController().getMetadata();
 
-    if (notificationInfo.containsKey(id)) {
-      final NotificationInfo info = notificationInfo.get(id);
-      info.setIsPlaying(!info.getIsPlaying());
-    } else {
-      notificationInfo.put(id, new NotificationInfo(priority, onlyAlertOnce, true, metadataCompat));
+    NotificationInfo info = new NotificationInfo(priority, true, metadataCompat);
+    if (!notificationInfo.containsKey(id)) {
+      notificationInfo.put(id, info);
+    } else if (!notificationInfo.get(id).equals(info)) {
+      notificationInfo.put(id, info);
     }
 
     final NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId)
@@ -139,6 +166,7 @@ public class MediaNotification extends AndroidNonvisibleComponent {
             .setShowActionsInCompactView(0, 1, 2)
             .setMediaSession(mediaSession.getSessionToken())
         )
+        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
         .setPriority(priority)
         .setSmallIcon(activity.getApplicationInfo().icon)
         .setContentTitle(metadataCompat.getString(MediaMetadataCompat.METADATA_KEY_TITLE))
@@ -146,36 +174,60 @@ public class MediaNotification extends AndroidNonvisibleComponent {
         .addAction(buildAction(id, ActionType.PREV))
         .addAction(buildAction(id, ActionType.PLAY))
         .addAction(buildAction(id, ActionType.NEXT))
-        .setOnlyAlertOnce(onlyAlertOnce);
+        .setOnlyAlertOnce(true);
 
     if (!metadataCompat.getString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI).equals("")) {
-      new Thread(new Runnable() {
-        @Override
-        public void run() {
-          try {
-            final URL url = new URL(metadataCompat.getString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI));
-            final Bitmap bitmap = BitmapFactory.decodeStream(url.openStream());
+      final Bitmap cachedAlbumArt = notificationInfo.get(id).getAlbumArtCache();
 
-            builder.setLargeIcon(bitmap);
-            notificationManager.notify(id, builder.build());
-          } catch (MalformedURLException e) {
-            e.printStackTrace();
-            throw new YailRuntimeError(e.toString(), "MalformedURLException");
-          } catch (IOException e) {
-            e.printStackTrace();
-            throw new YailRuntimeError(e.toString(), "IOException");
+      // Fetching a remote image could be expensive. Use the cached album art if this
+      // notification is being updated.
+      if (cachedAlbumArt != null) {
+        builder.setLargeIcon(cachedAlbumArt);
+        notificationManager.notify(id, builder.build());
+      } else {
+        // Fetching data over the internet blocks the UI thread. To keep Android happy,
+        // we need to fetch the album art from a new thread.
+        new Thread(new Runnable() {
+          @Override
+          public void run() {
+            try {
+              final URL url = new URL(metadataCompat.getString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI));
+              final Bitmap bitmap = BitmapFactory.decodeStream(url.openStream());
+
+              notificationInfo.get(id).setAlbumArtCache(bitmap);
+
+              builder.setLargeIcon(bitmap);
+              notificationManager.notify(id, builder.build());
+            } catch (MalformedURLException e) {
+              e.printStackTrace();
+              throw new YailRuntimeError(e.toString(), "MalformedURLException");
+            } catch (IOException e) {
+              e.printStackTrace();
+              throw new YailRuntimeError(e.toString(), "IOException");
+            }
           }
-        }
-      }).start();
+        }).start();
+      }
     } else {
       builder.setLargeIcon(metadataCompat.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART));
       notificationManager.notify(id, builder.build());
     }
   }
 
-  @SimpleFunction
+  /**
+   * Creates a metadata object from the given params and returns it.
+   *
+   * @param title    The title of the media.
+   * @param artist   The artist for the album of the media's original source.
+   * @param albumArt The artwork for the album of the media's original source.
+   *                 It can be an URL or an image from assets.
+   */
+  @SimpleFunction(description = "Creates a metadata object from the given params and returns it.")
   public Object CreateMetadata(String title, String artist, String albumArt) {
-    final Pattern urlPattern = Pattern.compile("https?://(www\\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()!@:%_+.~#?&//=]*)");
+    // RegEx pattern that matches all the valid URLs
+    final Pattern urlPattern =
+        Pattern.compile("https?://(www\\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()!@:%_+.~#?&//=]*)");
+
     final MediaMetadataCompat.Builder metadata;
     metadata = new MediaMetadataCompat.Builder()
         .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
@@ -197,7 +249,12 @@ public class MediaNotification extends AndroidNonvisibleComponent {
     return metadata.build();
   }
 
-  @SimpleFunction
+  /**
+   * Cancels the notification with the given ID.
+   *
+   * @param id The ID of the notification which is to be canceled.
+   */
+  @SimpleFunction(description = "Cancels the notification with given ID.")
   public void CancelNotification(int id) {
     if (notificationInfo.containsKey(id)) {
       notificationManager.cancel(id);
@@ -207,7 +264,10 @@ public class MediaNotification extends AndroidNonvisibleComponent {
     }
   }
 
-  @SimpleFunction
+  /**
+   * Cancels all the previously shown notifications.
+   */
+  @SimpleFunction(description = "Cancels all the previously shown notifications.")
   public void CancelAllNotifications() {
     if (!notificationInfo.isEmpty()) {
       notificationManager.cancelAll();
@@ -215,32 +275,56 @@ public class MediaNotification extends AndroidNonvisibleComponent {
     }
   }
 
-  @SimpleEvent
+  /**
+   * Fires when one of the action button on the notification is clicked.
+   *
+   * @param actionType     The type of action that was clicked; see {@link ActionType}
+   * @param notificationId The ID of the notification who's action was clicked.
+   */
+  @SimpleEvent(description = "Fires when one of the action button on the notification is clicked.")
   public void ActionButtonClicked(String actionType, int notificationId) {
     EventDispatcher.dispatchEvent(this, "ActionButtonClicked", actionType, notificationId);
   }
 
-  @SimpleProperty
+
+  @SimpleProperty(
+      description = "Higher notification priority, for more important notifications or alerts. The" +
+          " UI may choose to show these items larger, or at a different position in notification" +
+          " lists, compared with your app's PriorityDefault items."
+  )
   public int PriorityHigh() {
     return NotificationCompat.PRIORITY_HIGH;
   }
 
-  @SimpleProperty
+  @SimpleProperty(
+      description = "Lower notification priority, for items that are less important. The UI may " +
+          "choose to show these items smaller, or at a different position in the list, compared " +
+          "with your app's PriorityDefault items."
+  )
   public int PriorityLow() {
     return NotificationCompat.PRIORITY_LOW;
   }
 
-  @SimpleProperty
+  @SimpleProperty(
+      description = "Highest notification priority, for your application's most important items " +
+          "that require the user's prompt attention or input."
+  )
   public int PriorityMax() {
     return NotificationCompat.PRIORITY_MAX;
   }
 
-  @SimpleProperty
+  @SimpleProperty(
+      description = "Lowest notification priority; these items might not be shown to the user " +
+          "except under special circumstances, such as detailed notification logs."
+  )
   public int PriorityMin() {
     return NotificationCompat.PRIORITY_MIN;
   }
 
-  @SimpleProperty
+  @SimpleProperty(
+      description = "Default notification priority. If your application does not prioritize its " +
+          "own notifications, use this value for all notifications."
+  )
   public int PriorityDefault() {
     return NotificationCompat.PRIORITY_DEFAULT;
   }
@@ -250,12 +334,17 @@ public class MediaNotification extends AndroidNonvisibleComponent {
       editorType = PropertyTypeConstants.PROPERTY_TYPE_STRING,
       defaultValue = "MediaNotificationChannelID"
   )
-  @SimpleProperty(userVisible = false)
+  @SimpleProperty(
+      userVisible = false,
+      description = "Specifies the channel the notification should be delivered on."
+  )
   public void ChannelID(String id) {
     this.channelId = id;
   }
 
-  @SimpleProperty
+  @SimpleProperty(
+      description = "Returns the channel the notification are being delivered on."
+  )
   public String ChannelID() {
     return this.channelId;
   }
@@ -265,12 +354,17 @@ public class MediaNotification extends AndroidNonvisibleComponent {
       editorType = PropertyTypeConstants.PROPERTY_TYPE_STRING,
       defaultValue = "MediaNotificationChannel"
   )
-  @SimpleProperty(userVisible = false)
+  @SimpleProperty(
+      userVisible = false,
+      description = "Specifies the name of channel the notification should be delivered on."
+  )
   public void ChannelName(String name) {
     this.channelName = name;
   }
 
-  @SimpleProperty
+  @SimpleProperty(
+      description = "Returns the name of channel the notification are being delivered on."
+  )
   public String ChannelName() {
     return this.channelName;
   }
@@ -312,7 +406,9 @@ public class MediaNotification extends AndroidNonvisibleComponent {
     }
   }
 
-  @SimpleProperty
+  @SimpleProperty(
+      description = "Returns the importance of the channel the notification are being delivered on."
+  )
   public String ChannelImportance() {
     switch (this.channelImp) {
       case NotificationManager.IMPORTANCE_DEFAULT:

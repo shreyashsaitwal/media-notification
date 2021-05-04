@@ -28,6 +28,7 @@ import com.google.appinventor.components.runtime.AndroidNonvisibleComponent;
 import com.google.appinventor.components.runtime.ComponentContainer;
 import com.google.appinventor.components.runtime.EventDispatcher;
 import com.google.appinventor.components.runtime.Form;
+import com.google.appinventor.components.runtime.OnDestroyListener;
 import com.google.appinventor.components.runtime.errors.YailRuntimeError;
 
 import java.io.IOException;
@@ -37,7 +38,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-public class MediaNotification extends AndroidNonvisibleComponent {
+public class MediaNotification extends AndroidNonvisibleComponent implements OnDestroyListener {
   private final Context context;
   private final Activity activity;
   private final Form form;
@@ -50,6 +51,7 @@ public class MediaNotification extends AndroidNonvisibleComponent {
   private int channelImp = NotificationManager.IMPORTANCE_DEFAULT;
 
   private final Map<Integer, NotificationInfo> notificationInfo = new HashMap<>();
+  private BroadcastReceiver mediaActionReceiver;
 
   public MediaNotification(ComponentContainer container) {
     super(container.$form());
@@ -61,6 +63,12 @@ public class MediaNotification extends AndroidNonvisibleComponent {
     this.notificationManager = NotificationManagerCompat.from(context);
 
     registerActionReceiver(activity);
+    form.registerForOnDestroy(this);
+  }
+
+  @Override
+  public void onDestroy() {
+    activity.unregisterReceiver(mediaActionReceiver);
   }
 
   /**
@@ -70,7 +78,7 @@ public class MediaNotification extends AndroidNonvisibleComponent {
    * @param activity the current activity
    */
   private void registerActionReceiver(Activity activity) {
-    final BroadcastReceiver mediaActionReceiver = new BroadcastReceiver() {
+    mediaActionReceiver = new BroadcastReceiver() {
       @Override
       public void onReceive(Context context, Intent intent) {
         final Bundle extras = intent.getExtras();

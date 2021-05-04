@@ -1,6 +1,6 @@
 # Media Notifications
 
-A MIT AI2 extension that allows developers to show media style notifications for their media applications.
+An MIT AI2 extension to allows developers to show media style notifications for their applications.
 
 <br>
 <p align='center'>
@@ -22,7 +22,7 @@ A MIT AI2 extension that allows developers to show media style notifications for
 
 * ### Events
 
-  * **`ActionButtonClicked`**
+  * **ActionButtonClicked**
 
     Fires when one of the action button on the notification is clicked.
 
@@ -31,11 +31,10 @@ A MIT AI2 extension that allows developers to show media style notifications for
     Param | Description
     --- | --
     `actionType` | The type of the action button that was clicked. It could be one of the following:<br> 1. **play**<br> 2. **pause**<br> 3. **next**<br> 4. **prev**
-      ‎
 
 * ### Methods
 
-  * **`ShowNotification`**
+  * **ShowNotification**
 
     ![show](./images/show.png)
 
@@ -46,9 +45,8 @@ A MIT AI2 extension that allows developers to show media style notifications for
     `id` | A unique integer that identifies this notification.
     `priority` | The relative priority for this notification. Priority is an indication of how much of the user's valuable attention should be consumed by this notification.
     `metadata` | The metadata for some media.
-      ‎
 
-  * **`CreateMetadata`**
+  * **CreateMetadata**
 
     ![createMeta](./images/createMeta.png)
 
@@ -59,12 +57,12 @@ A MIT AI2 extension that allows developers to show media style notifications for
     `title` | The title of the media.
     `artist` | The artist for the album of the media's original source.
     `albumArt` | The artwork for the album of the media's original source. It can be an URL to a remote image or an image from assets.
-    ‎
+
     > **Note**: If you use a remote image, make sure it's not too big. Large images may fail to load and the notification won't be shown.
 
     <br>
 
-  * **`CancelNotification`**
+  * **CancelNotification**
 
     ![cancel](./images/cancel.png)
 
@@ -73,8 +71,8 @@ A MIT AI2 extension that allows developers to show media style notifications for
     Param | Description
     --- | ---
     `id` | A unique integer that identifies the notification that is to be canceled.
-      ‎
-  * **`CancelAll`**
+
+  * **CancelAll**
 
     ![cancelAll](./images/cancelAll.png)
 
@@ -83,7 +81,7 @@ A MIT AI2 extension that allows developers to show media style notifications for
 
 * ### Properties
 
-  * **`ChannelID`**
+  * **ChannelID**
 
     <img src='./images/dp-channelId.png' width='350'/>
 
@@ -91,7 +89,7 @@ A MIT AI2 extension that allows developers to show media style notifications for
 
     Specifies the channel the notification should be delivered on.
 
-  * **`ChannelImportance`**
+  * **ChannelImportance**
 
     <img src='./images/dp-channelImp.png' width='350'/>
 
@@ -99,7 +97,7 @@ A MIT AI2 extension that allows developers to show media style notifications for
 
     Specifies the importance of the channel the notifications are being delivered on.
 
-  * **`ChannelID`**
+  * **ChannelID**
 
     <img src='./images/dp-channelId.png' width='350'/>
 
@@ -107,33 +105,27 @@ A MIT AI2 extension that allows developers to show media style notifications for
 
     Specifies the name of channel the notification should be delivered on.
 
-  * **`NotificationPriorities`**
+  * **NotificationPriorities**
 
-    ![def](./images/p-def.png)
+    * ![def](./images/p-def.png)
 
-      * Default notification priority. If your application does not prioritize its own notifications, use this value for all notifications.
+      Default notification priority. If your application does not prioritize its own notifications, use this value for all notifications.
 
-      <br>
+    * ![high](./images/p-high.png)
 
-    ![high](./images/p-high.png)
+      Higher notification priority, for more important notifications or alerts. The UI may choose to show these items larger, or at a different position in notification lists, compared with your app's PriorityDefault items.
 
-      * Higher notification priority, for more important notifications or alerts. The UI may choose to show these items larger, or at a different position in notification lists, compared with your app's PriorityDefault items.
+    * ![low](./images/p-low.png)
 
-      <br>
+      Lower notification priority, for items that are less important. The UI may choose to show these items smaller, or at a different position in the list, compared with your app's PriorityDefault items.
 
-    ![low](./images/p-low.png)
+    * ![max](./images/p-max.png)
 
-      * Lower notification priority, for items that are less important. The UI may choose to show these items smaller, or at a different position in the list, compared with your app's PriorityDefault items.
+      Highest notification priority, for your application's most important items that require the user's prompt attention or input.
 
-    ![max](./images/p-max.png)
+    * ![min](./images/p-min.png)
 
-      * Highest notification priority, for your application's most important items that require the user's prompt attention or input.
-
-      <br>
-
-    ![min](./images/p-min.png)
-
-      * Lowest notification priority; these items might not be shown to the user except under special circumstances, such as detailed notification logs.
+      Lowest notification priority; these items might not be shown to the user except under special circumstances, such as detailed notification logs.
 
 
 ## License

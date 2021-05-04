@@ -153,7 +153,7 @@ public class MediaNotification extends AndroidNonvisibleComponent implements OnD
   /**
    * Shows a media style notification.
    *
-   * @param id       The ID of this notification. It is used to identify the notification.
+   * @param id       A unique integer that identifies this notification.
    * @param priority The priority of this notification.
    * @param metadata Metadata of the media being played.
    */
@@ -163,9 +163,7 @@ public class MediaNotification extends AndroidNonvisibleComponent implements OnD
     MediaMetadataCompat metadataCompat = mediaSession.getController().getMetadata();
 
     NotificationInfo info = new NotificationInfo(priority, true, metadataCompat);
-    if (!notificationInfo.containsKey(id)) {
-      notificationInfo.put(id, info);
-    } else if (!notificationInfo.get(id).equals(info)) {
+    if (!notificationInfo.containsKey(id) || !notificationInfo.get(id).equals(info)) {
       notificationInfo.put(id, info);
     }
 
@@ -343,7 +341,6 @@ public class MediaNotification extends AndroidNonvisibleComponent implements OnD
       defaultValue = "MediaNotificationChannelID"
   )
   @SimpleProperty(
-      userVisible = false,
       description = "Specifies the channel the notification should be delivered on."
   )
   public void ChannelID(String id) {
@@ -351,7 +348,7 @@ public class MediaNotification extends AndroidNonvisibleComponent implements OnD
   }
 
   @SimpleProperty(
-      description = "Returns the channel the notification are being delivered on."
+      description = "Returns the channel the notifications are being delivered on."
   )
   public String ChannelID() {
     return this.channelId;
@@ -363,7 +360,6 @@ public class MediaNotification extends AndroidNonvisibleComponent implements OnD
       defaultValue = "MediaNotificationChannel"
   )
   @SimpleProperty(
-      userVisible = false,
       description = "Specifies the name of channel the notification should be delivered on."
   )
   public void ChannelName(String name) {
@@ -371,7 +367,7 @@ public class MediaNotification extends AndroidNonvisibleComponent implements OnD
   }
 
   @SimpleProperty(
-      description = "Returns the name of channel the notification are being delivered on."
+      description = "Returns the name of channel the notifications are being delivered on."
   )
   public String ChannelName() {
     return this.channelName;
@@ -386,7 +382,9 @@ public class MediaNotification extends AndroidNonvisibleComponent implements OnD
       },
       alwaysSend = true
   )
-  @SimpleProperty(userVisible = false)
+  @SimpleProperty(
+      description = "Specifies the importance of the channel the notifications are being delivered on."
+  )
   public void ChannelImportance(String importance) {
     Log.i(importance, "LOG MN");
     switch (importance) {
@@ -415,7 +413,7 @@ public class MediaNotification extends AndroidNonvisibleComponent implements OnD
   }
 
   @SimpleProperty(
-      description = "Returns the importance of the channel the notification are being delivered on."
+      description = "Returns the importance of the channel the notifications are being delivered on."
   )
   public String ChannelImportance() {
     switch (this.channelImp) {

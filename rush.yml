@@ -1,12 +1,9 @@
 name: MediaNotification
-description: Show media style notifactions
-
-# For a detailed info on this file and supported fields, check
-# out this link: https://github.com/ShreyashSaitwal/rush-cli/wiki/Metadata-File
+description: 'An extension to allows developers to show media style notifications for their applications.<br><br>Built by Shreyash with <3 and <a href="https://community.kodular.io/t/rush-a-new-and-improved-way-of-building-extensions/111470?u=shreyash"><b>Rush</b></a>'
 
 version:
   number: auto        # Auto increments version number when built with '-r' (or '--release') flag.
-  name: 1.0-BETA
+  name: 1.0
 
 assets:
   icon: icon.png

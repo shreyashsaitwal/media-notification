@@ -30,7 +30,7 @@ An MIT AI2 extension to allows developers to show media style notifications for 
 
     Param | Description
     --- | --
-    `actionType` | The type of the action button that was clicked. It could be one of the following:<br> 1. **play**<br> 2. **pause**<br> 3. **next**<br> 4. **prev**
+    `actionType` | The type of the action button that was clicked. It could be one of the following:<br> 1. **play**<br> 2. **pause**<br> 3. **next**<br> 4. **previous**
 
 * ### Methods
 

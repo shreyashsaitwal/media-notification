@@ -106,6 +106,8 @@ An MIT AI2 extension to allows developers to show media style notifications for 
     Specifies the name of channel the notification should be delivered on.
 
   * **NotificationPriorities**
+  
+    **`Getter only`**
 
     * ![def](./images/p-def.png)
 

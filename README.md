@@ -13,7 +13,6 @@ An MIT AI2 extension to allows developers to show media style notifications for 
 
 ## Usage
 * Download the extension from the latest [release](https://github.com/ShreyashSaitwal/media-notification/releases/latest).<br>
-  **Note**: If you're a Kodular user, download the AIX file who's name ends with `.support.aix`.
 * Import the extension in the builder (AI2, Kodular, etc).
 * Play around with the blocks provided by the extension. For more info about what each block does, check out the block reference below.
 

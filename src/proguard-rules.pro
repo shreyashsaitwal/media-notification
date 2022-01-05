@@ -1,11 +1,12 @@
--dontpreverify
--repackageclasses ''
+-keep public class io.shreyash.medianotification** {
+    public *;
+ }
+-keeppackagenames gnu.kawa**, gnu.expr**
+
+-optimizationpasses 4
 -allowaccessmodification
--optimizations !code/simplification/arithmetic
+-mergeinterfacesaggressively
 
--dontwarn androidx.media.R*, android.support.v4.media.**
--keeppackagenames gnu.kawa.*, gnu.expr.*
-
--keep public class * {
-    public protected *;
-}
+-repackageclasses 'io/shreyash/medianotification/repack'
+-flattenpackagehierarchy
+-dontpreverify

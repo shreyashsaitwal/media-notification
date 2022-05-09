@@ -20,11 +20,18 @@ jobs:
         java-version: '8'
         distribution: 'zulu'
     
+    - name: Download Rush
+      run: curl https://raw.githubusercontent.com/shreyashsaitwal/rush-cli/main/scripts/install/install.sh -fsSL | sh
+
     - name: Install Rush
       run: |
-        curl https://raw.githubusercontent.com/shreyashsaitwal/rush-cli/main/scripts/install/install.sh -fsSL | sh
-        chmod +x $HOME/runner/.rush/bin/rush
-        export PATH="$PATH:$HOME/runner/.rush/bin"
+        chmod +x $HOME/.rush/bin/rush
+        export PATH="$PATH:$HOME/.rush/bin"
     
     - name: Build extension
       run: rush build -r
+
+    - name: Upload extension
+      uses: actions/upload-artifact@v3.0.0
+      with:
+        path: './out/*.aix'

@@ -22,14 +22,9 @@ jobs:
     
     - name: Download Rush
       run: curl https://raw.githubusercontent.com/shreyashsaitwal/rush-cli/main/scripts/install/install.sh -fsSL | sh
-
-    - name: Install Rush
-      run: |
-        chmod +x $HOME/.rush/bin/rush
-        export PATH="$PATH:$HOME/.rush/bin"
     
     - name: Build extension
-      run: rush build -r
+      run: ./$HOME/.rush/bin/rush build -r
 
     - name: Upload extension
       uses: actions/upload-artifact@v3.0.0

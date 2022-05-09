@@ -1,0 +1,30 @@
+name: Rush CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up JDK 8
+      uses: actions/setup-java@v3
+      with:
+        java-version: '8'
+        distribution: 'zulu'
+    
+    - name: Install Rush
+      run: |
+        curl https://raw.githubusercontent.com/shreyashsaitwal/rush-cli/main/scripts/install/install.sh -fsSL | sh
+        chmod +x $HOME/runner/.rush/bin/rush
+        export PATH="$PATH:$HOME/runner/.rush/bin"
+    
+    - name: Build extension
+      run: rush build -r
